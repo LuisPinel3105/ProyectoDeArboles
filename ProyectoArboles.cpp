@@ -263,4 +263,139 @@ private:
         mostrarNodo(nodo->left, nivel + 1);
         mostrarNodo(nodo->right, nivel + 1);
     }
+Persona* buscarSucesorDirecto(Persona* reyActual) {
+        if(reyActual == nullptr) {
+            Persona* sucesor = buscarPrimerVaronVivoPrimogenito(root);
+            if (sucesor) return sucesor;
+            
+            return buscarMejorMujer(root);
+        }
+        
+        if(reyActual->left){
+            Persona* sucesor = buscarPrimerVaronVivoPrimogenito(reyActual->left);
+            if(sucesor)
+			return sucesor;
+        }
+        
+        if(reyActual->right){
+            Persona* sucesor = buscarPrimerVaronVivoPrimogenito(reyActual->right);
+            if(sucesor)
+			return sucesor;
+        }
+        
+        Persona* hermano = buscarHermano(reyActual);
+        if(hermano){
+            if(!hermano->is_dead && hermano->age < 70 && hermano->gender == 'H'){
+                return hermano;
+            }
+            
+            Persona* sucesorHermano = buscarPrimerVaronVivoPrimogenito(hermano);
+            if(sucesorHermano)
+			return sucesorHermano;
+        }
+        
+        Persona* tio = buscarTio(reyActual);
+        if(tio){
+            if(!tio->is_dead && tio->age < 70 && tio->gender == 'H'){
+                return tio;
+            }
+            
+            Persona* sucesorTio = buscarPrimerVaronVivoPrimogenito(tio);
+            if(sucesorTio)
+			return sucesorTio;
+        }
+        
+        Persona* ancestro = buscarAncestroConDosHijos(reyActual);
+        if(ancestro){
+            Persona* sucesor = buscarPrimerVaronVivoPrimogenito(ancestro);
+            if(sucesor)
+			return sucesor;
+        }
+        
+        vector<Persona*> todosCandidatos;
+        colectarCandidatos(root, todosCandidatos);
+        
+        vector<Persona*> candidatosValidos;
+        for(size_t i = 0; i < todosCandidatos.size(); i++){
+            if(!todosCandidatos[i]->is_dead && todosCandidatos[i]->age < 70 && todosCandidatos[i]->gender == 'H'){
+                candidatosValidos.push_back(todosCandidatos[i]);
+            }
+        }
+        
+        if(!candidatosValidos.empty()){
+            sort(candidatosValidos.begin(), candidatosValidos.end(), [this](Persona* a, Persona* b) {
+                return calcularDistanciaRaiz(a) < calcularDistanciaRaiz(b);
+            });
+            return candidatosValidos[0];
+        }
+        
+        return buscarMejorMujer(root);
+    }
+
+public:
+    ArbolGenealogico() : root(nullptr) {}
+    
+    ~ArbolGenealogico(){
+        for (size_t i = 0; i < nodos.size(); i++){
+            delete nodos[i];
+        }
+    }
+    
+    void crearCSVEjemplo() {
+        ofstream file("FamiliaReal.csv");
+        file << "id,name,last_name,gender,age,id_father,is_dead,was_king,is_king\n";
+        file << "1,Adrian,Elric,H,80,0,1,1,0\n";
+        file << "2,Luis,Elric,H,75,1,0,1,1\n";
+        file << "3,Jose,Elric,H,50,2,1,0,0\n";
+        file << "4,Edward,Elric,H,48,2,0,0,0\n";
+        file << "5,Darwin,Elric,H,25,3,0,0,0\n";
+        file << "6,Mauricio,Elric,H,22,3,0,0,0\n";
+        file << "7,Samirt,Elric,H,20,4,0,0,0\n";
+        file << "8,Pedri,Elric,H,18,4,0,0,0\n";
+        file << "9,Messi,Elric,H,5,5,0,0,0\n";
+        file << "10,Laufey,Elric,M,30,2,0,0,0\n";
+        file.close();
+        cout << "Archivo FamiliaReal.csv creado automaticamente!" << endl;
+    }
+    
+    bool cargarDesdeCSV(const string& archivo){
+        ifstream file(archivo.c_str());
+        if(!file.is_open()){
+            cout<< "Error: No se pudo abrir el archivo " << archivo <<endl;
+            return false;
+        }
+        
+        string linea;
+        bool primeraLinea = true;
+        
+        while(getline(file, linea)){
+            if(primeraLinea){
+                primeraLinea = false;
+                continue;
+            }
+            
+            vector<string> campos= split(linea, ',');
+            if(campos.size() >= 9){
+                int id = stringToInt(campos[0]);
+                string name = campos[1];
+                string last_name = campos[2];
+                char gender = campos[3][0];
+                int age = stringToInt(campos[4]);
+                int id_father = stringToInt(campos[5]);
+                bool is_dead = stringToBool(campos[6]);
+                bool was_king = stringToBool(campos[7]);
+                bool is_king = stringToBool(campos[8]);
+                
+                Persona* persona = new Persona(id, name, last_name, gender, age, id_father, is_dead, was_king, is_king);
+                nodos.push_back(persona);
+            }
+        }
+        
+        file.close();
+        construirArbol();
+        
+        cout<< "----Arbol de la familia real cargado desde .CSV----" << endl;
+        cout<< "Total de personas: " << nodos.size() <<endl;
+        return true;
+    }
 }
